@@ -1,5 +1,25 @@
 @extends('layouts.sidenav-layout')
 @section('content')
+<style>
+   #productTable td {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal; 
+}
+#productTable td .btn {
+    white-space: nowrap;
+}
+
+#invoiceTable td{
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal; 
+}
+
+#invoiceTable td .btn {
+    white-space: nowrap;
+}
+</style>
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-4 col-lg-4 p-2">
@@ -24,7 +44,7 @@
                                 <thead class="w-100">
                                     <tr class="text-xs">
                                         <td>Name</td>
-                                        <td>Qty</td>
+                                        <td class="text-nowrap">Qty</td>
                                         <td>Subtotal</td>
                                         <td>Remove</td>
                                     </tr>
@@ -70,7 +90,7 @@
                         <thead class="w-100">
                             <tr class="text-xs text-bold">
                                 <td>Product</td>
-                                <td>Pick</td>
+                                <td class="text-nowrap">Pick</td>
                             </tr>
                         </thead>
                         <tbody class="w-100" id="productList">
@@ -192,343 +212,282 @@
 
             <script>
                 const user = JSON.parse(localStorage.getItem("user"));
-                const token = localStorage.getItem("token");
-
-                document.addEventListener('DOMContentLoaded', () => {
-                    (async () => {
-                        showLoader();
-                        await CustomerList();
-                        await ProductList();
-                        hideLoader();
-                    })()
-                });
-
-
-
-                let InvoiceItemList = [];
-
-
-                function ShowInvoiceItem() {
-
-                    let invoiceList = $('#invoiceList');
-
-                    invoiceList.empty();
-
-                    InvoiceItemList.forEach(function (item, index) {
-                        let row = `<tr class="text-xs">
-                            <td>${item['product_name']}</td>
-                            <td>${item['qty']}</td>
-                            <td>${item['subtotal']}</td>
-
-                            <td><a data-index="${index}"
-                                data-productID="${item['product_id']}"
-                                data-itemDiscount="${item['item_discount']}"
-                                data-unitPrice="${item['price_with_discount']}" 
-                                class="btn remove text-xxs px-2 py-1  btn-sm m-0">Remove</a>
-                            </td>
-                        </tr>`
-                        invoiceList.append(row)
-                    })
-
-                    CalculateGrandTotal();
-
-                    $('.remove').on('click', async function () {
-                        let index = $(this).data('index');
-                        removeItem(index);
-                    })
-
-                }
-
-
-                function removeItem(index) {
-                    InvoiceItemList.splice(index, 1);
-                    ShowInvoiceItem()
-                }
-
-                function DiscountChange() {
-                    CalculateGrandTotal();
-                }
-
-                function CalculateGrandTotal() {
-                    let Total = 0;
-                    let Vat = 0;
-                    let Payable = 0;
-                    let Discount = 0;
-
-                    let discountPercentage = (parseFloat(document.getElementById('discountP').value));
-
-                    InvoiceItemList.forEach((item, index) => {
-                        Total = Total + parseFloat(item['subtotal']);
-                    })
-
-                    if (discountPercentage === 0) {
-                        Vat = ((Total * 5) / 100).toFixed(2);
-                    }
-                    else {
-                        Discount = ((Total * discountPercentage) / 100).toFixed(2);
-                        Total = (Total - ((Total * discountPercentage) / 100)).toFixed(2);
-                        Vat = ((Total * 5) / 100).toFixed(2);
-                    }
-
-                    Payable = (parseFloat(Total) + parseFloat(Vat)).toFixed(2);
-
-
-                    document.getElementById('total').innerText = Total;
-                    document.getElementById('payable').innerText = Payable;
-                    document.getElementById('vat').innerText = Vat;
-                    document.getElementById('discount').innerText = Discount;
-                }
-
-
-                function add() {
-                    let PId = document.getElementById('PId').value;
-                    let PName = document.getElementById('PName').value;
-                    let PPrice = document.getElementById('PPrice').value;
-                    let BuyPrice = document.getElementById('PBuyPrice').value;
-                    let PQty = document.getElementById('PQty').value;
-                    let PDiscount = document.getElementById('PDiscount').value;
-                    let UnitPrice = (parseFloat(PPrice) - parseFloat(PDiscount)).toFixed(2);
-                    let SubTotalPrice = (parseFloat(UnitPrice) * parseFloat(PQty)).toFixed(2);
-                    let ItemProfit = (parseFloat(BuyPrice) * parseFloat(PQty) - parseFloat(SubTotalPrice)).toFixed(2);
-                    if (PId.length === 0) {
-                        errorToast("Product ID Required");
-                    }
-                    else if (PName.length === 0) {
-                        errorToast("Product Name Required");
-                    }
-                    else if (PPrice.length === 0) {
-                        errorToast("Product Price Required");
-                    }
-                    else if (PQty.length === 0) {
-                        errorToast("Product Quantity Required");
-                    }
-                    else {
-                        let item = {
-                            product_name: PName,
-                            product_id: PId,
-                            qty: PQty,
-                            item_discount: PDiscount,
-                            price_with_discount: UnitPrice,
-                            subtotal: SubTotalPrice,
-                            item_profit: ItemProfit
-                        };
-                        InvoiceItemList.push(item);
-                        console.log(InvoiceItemList);
-                        $('#sale-product-modal').modal('hide')
-                        ShowInvoiceItem();
-                    }
-                }
-
-
-                function addModal(id, name, price, BuyPrice) {
-                    document.getElementById('PId').value = id
-                    document.getElementById('PName').value = name
-                    document.getElementById('PPrice').value = price
-                    document.getElementById('PBuyPrice').value = BuyPrice
-                    $('#sale-product-modal').modal('show')
-                }
-
-
-                async function CustomerList() {
-                    let res = await axios.get("/backend/all-customer", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-                    let customerList = $("#customerList");
-                    let customerTable = $("#customerTable");
-
-                    customerTable.DataTable().destroy();
-                    customerList.empty();
-
-                    res.data.data.forEach(function (item, index) {
-                        let row = `<tr class="text-xs">
-                            <td><i class="bi bi-person"></i> ${item['name']}</td>
-                            <td><a data-name="${item['name']}" data-mobile="${item['mobile']}" data-id="${item['id']}" class="btn btn-outline-dark addCustomer  text-xxs px-2 py-1  btn-sm m-0">Add</a></td>
-                         </tr>`
-                        customerList.append(row)
-                    })
-
-
-                    $('.addCustomer').on('click', async function () {
-
-                        let CName = $(this).data('name');
-                        let cPhone = $(this).data('mobile');
-                        let CId = $(this).data('id');
-
-                        $("#CName").text(CName)
-                        $("#cPhone").text(cPhone)
-                        $("#CId").text(CId)
-
-                    })
-
-                    new DataTable('#customerTable', {
-                        order: [[0, 'desc']],
-                        scrollCollapse: false,
-                        info: false,
-                        lengthChange: false
-                    });
-                }
-
-
-                async function ProductList() {
-                    let res = await axios.get("/backend/product-with-stock", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-                    let productList = $("#productList");
-                    let productTable = $("#productTable");
-                    productTable.DataTable().destroy();
-                    productList.empty();
-
-                    res.data.data.forEach(function (item, index) {
-                        let row = `<tr class="text-xs">
-                            <td> <img class="w-10" src="/storage/${item['img_url']}"/> ${item['name']} (৳ ${item['price']}, ${item['stock_qty']})</td>
-                            <td><a data-name="${item['name']}"                            
-                                data-buyprice="${item['buy_price']}"
-                                data-price="${item['price']}" 
-                                data-id="${item['id']}" 
-                                class="btn btn-outline-dark text-xxs px-2 py-1 addProduct  btn-sm m-0">Add</a>
-                            </td>
-                        </tr>`
-                        productList.append(row);
-                        // console.log(res.data.data);
-                    })
-
-
-
-                    $('.addProduct').on('click', async function () {
-                        let PName = $(this).data('name');
-                        let PPrice = $(this).data('price');
-                        let PId = $(this).data('id');
-                        let BuyPrice = $(this).data('buyprice');
-                        addModal(PId, PName, PPrice, BuyPrice);
-                        // console.log(BuyPrice);
-                    })
-
-
-                    new DataTable('#productTable', {
-                        order: [[0, 'desc']],
-                        scrollCollapse: false,
-                        info: false,
-                        lengthChange: false
-                    });
-                }
-
-
-                async function createInvoice() {
-                    let total = document.getElementById('total').innerText;
-                    let discount = document.getElementById('discount').innerText
-                    let vat = document.getElementById('vat').innerText
-                    let payable = document.getElementById('payable').innerText
-                    let CId = document.getElementById('CId').innerText;
-                    let TotalProfit = 0.0;
-
-                    InvoiceItemList.forEach((item) => {
-                        let profit = parseFloat(item['item_profit']);
-                        if (!isNaN(profit)) {
-                            TotalProfit += profit;
-                        }
-                    });
-
-
-                    let Data = {
-                        total: parseFloat(total),
-                        discount: parseFloat(discount),
-                        vat: parseFloat(vat),
-                        payable: parseFloat(payable),
-                        customer_id: parseInt(CId),
-                        total_profit: parseFloat(TotalProfit),
-                        products: InvoiceItemList
-                    };
-
-
-                    if (CId.length === 0) {
-                        errorToast("Customer Required !")
-                    }
-                    else if (InvoiceItemList.length === 0) {
-                        errorToast("Product Required !")
-                    }
-                    else {
-
-                        showLoader();
-                        let res = await axios.post("/backend/create-invoice", Data)
-                        hideLoader();
-                        if (res.status === 200) {
-                            window.location.href = '/invoicePage'
-                            successToast("Invoice Created");
-                        }
-                        else {
-                            errorToast("Something Went Wrong")
-                        }
-                    }
-
-                }
-
-                async function salePageNewCustomer() {
-                    let nameInput = document.getElementById('customerNameCreate').value;
-                    let emailInput = document.getElementById('customerEmailCreate').value;
-                    let mobileInput = document.getElementById('customerMobileCreate').value;
-
-                    // if (!nameInput || !emailInput || !mobileInput) {
-                    //     errorToast("Form input(s) not found!");
-                    //     return;
-                    // }
-
-
-                    if (nameInput.length === 0) {
-                        errorToast("Customer Name Required!");
-                        return;
-                    }
-                    if (emailInput.length === 0) {
-                        errorToast("Customer Email Required!");
-                        return;
-                    }
-
-                    if (mobileInput.length === 0) {
-                        errorToast("Customer Mobile Required!");
-                        return;
-                    }
-
-                    try {
-
-                        showLoader();
-                        let res = await axios.post("/backend/create-customer", {
-                            name: nameInput,
-                            email: emailInput,
-                            mobile: mobileInput
-                        });
-
-                        hideLoader();
-
-                        if (res.status === 200 && res.data.status === 'success') {
-                            successToast(res.data.message || "Customer Created!");
-                            document.getElementById("save-form").reset();
-                            document.getElementById('customer-modal-close').click();
-                            await CustomerList();
-                        } else {
-                            errorToast("Request failed!");
-                        }
-
-                    } catch (err) {
-                        hideLoader();
-                        if (err.response && err.response.status === 422) {
-                            let errors = err.response.data.errors;
-
-                            for (let field in errors) {
-                                if (errors.hasOwnProperty(field)) {
-                                    errorToast(errors[field][0]);
-                                }
-                            }
-                        } else if (err.response && err.response.status === 404) {
-                            errorToast(err.response.data.message);
-
-                        } else {
-                            errorToast(err.response.data.message);
-                        }
-                    }
-                }
+const token = localStorage.getItem("token");
+
+let InvoiceItemList = [];
+let SelectedCustomer = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    (async () => {
+        showLoader();
+        await CustomerList();
+        await ProductList();
+        hideLoader();
+
+        // Load saved Invoice Items
+        const savedInvoice = localStorage.getItem('InvoiceItemList');
+        if (savedInvoice) {
+            InvoiceItemList = JSON.parse(savedInvoice);
+            ShowInvoiceItem();
+        }
+
+        // Load saved Customer
+        const savedCustomer = localStorage.getItem('InvoiceCustomer');
+        if (savedCustomer) {
+            SelectedCustomer = JSON.parse(savedCustomer);
+            $("#CName").text(SelectedCustomer.name);
+            $("#cPhone").text(SelectedCustomer.phone);
+            $("#CId").text(SelectedCustomer.id);
+        }
+    })()
+});
+
+// -------------------- Invoice Functions --------------------
+
+function ShowInvoiceItem() {
+    let invoiceList = $('#invoiceList');
+    invoiceList.empty();
+
+    InvoiceItemList.forEach(function (item, index) {
+        let row = `<tr class="text-xs">
+            <td>${item['product_name']}</td>
+            <td>${item['qty']}</td>
+            <td>${item['subtotal']}</td>
+            <td>
+                <a data-index="${index}"
+                   data-productID="${item['product_id']}"
+                   data-itemDiscount="${item['item_discount']}"
+                   data-unitPrice="${item['price_with_discount']}" 
+                   class="btn remove text-xxs px-2 py-1 btn-sm m-0">Remove</a>
+            </td>
+        </tr>`;
+        invoiceList.append(row);
+    });
+
+    CalculateGrandTotal();
+
+    $('.remove').on('click', function () {
+        let index = $(this).data('index');
+        removeItem(index);
+    });
+}
+
+function removeItem(index) {
+    InvoiceItemList.splice(index, 1);
+    // Update localStorage
+    localStorage.setItem('InvoiceItemList', JSON.stringify(InvoiceItemList));
+    ShowInvoiceItem();
+}
+
+function DiscountChange() {
+    CalculateGrandTotal();
+}
+
+function CalculateGrandTotal() {
+    let Total = 0;
+    let Vat = 0;
+    let Payable = 0;
+    let Discount = 0;
+
+    let discountPercentage = parseFloat(document.getElementById('discountP').value) || 0;
+
+    InvoiceItemList.forEach(item => {
+        Total += parseFloat(item['subtotal']);
+    });
+
+    if (discountPercentage === 0) {
+        Vat = ((Total * 5) / 100).toFixed(2);
+    } else {
+        Discount = ((Total * discountPercentage) / 100).toFixed(2);
+        Total = (Total - ((Total * discountPercentage) / 100)).toFixed(2);
+        Vat = ((Total * 5) / 100).toFixed(2);
+    }
+
+    Payable = (parseFloat(Total) + parseFloat(Vat)).toFixed(2);
+
+    document.getElementById('total').innerText = Total;
+    document.getElementById('payable').innerText = Payable;
+    document.getElementById('vat').innerText = Vat;
+    document.getElementById('discount').innerText = Discount;
+}
+
+// -------------------- Product Functions --------------------
+
+function addModal(id, name, price, BuyPrice) {
+    document.getElementById('PId').value = id;
+    document.getElementById('PName').value = name;
+    document.getElementById('PPrice').value = price;
+    document.getElementById('PBuyPrice').value = BuyPrice;
+    $('#sale-product-modal').modal('show');
+}
+
+function add() {
+    let PId = document.getElementById('PId').value;
+    let PName = document.getElementById('PName').value;
+    let PPrice = document.getElementById('PPrice').value;
+    let BuyPrice = document.getElementById('PBuyPrice').value;
+    let PQty = document.getElementById('PQty').value;
+    let PDiscount = document.getElementById('PDiscount').value;
+
+    let UnitPrice = (parseFloat(PPrice) - parseFloat(PDiscount)).toFixed(2);
+    let SubTotalPrice = (parseFloat(UnitPrice) * parseFloat(PQty)).toFixed(2);
+    let ItemProfit = (parseFloat(BuyPrice) * parseFloat(PQty) - parseFloat(SubTotalPrice)).toFixed(2);
+
+    if (!PId || !PName || !PPrice || !PQty) {
+        errorToast("All Product fields are required");
+        return;
+    }
+
+    let item = {
+        product_name: PName,
+        product_id: PId,
+        qty: PQty,
+        item_discount: PDiscount,
+        price_with_discount: UnitPrice,
+        subtotal: SubTotalPrice,
+        item_profit: ItemProfit
+    };
+
+    InvoiceItemList.push(item);
+    localStorage.setItem('InvoiceItemList', JSON.stringify(InvoiceItemList));
+
+    $('#sale-product-modal').modal('hide');
+    ShowInvoiceItem();
+}
+
+// -------------------- Customer Functions --------------------
+
+async function CustomerList() {
+    let res = await axios.get("/backend/all-customer", {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+
+    let customerList = $("#customerList");
+    let customerTable = $("#customerTable");
+
+    customerTable.DataTable().destroy();
+    customerList.empty();
+
+    res.data.data.forEach(item => {
+        let row = `<tr class="text-xs">
+            <td><i class="bi bi-person"></i> ${item['name']}</td>
+            <td>
+                <a data-name="${item['name']}" data-mobile="${item['mobile']}" data-id="${item['id']}" 
+                class="btn btn-outline-dark addCustomer text-xxs px-2 py-1 btn-sm m-0">Add</a>
+            </td>
+         </tr>`;
+        customerList.append(row);
+    });
+
+    $('.addCustomer').on('click', function () {
+        let CName = $(this).data('name');
+        let cPhone = $(this).data('mobile');
+        let CId = $(this).data('id');
+
+        $("#CName").text(CName);
+        $("#cPhone").text(cPhone);
+        $("#CId").text(CId);
+
+        SelectedCustomer = { name: CName, phone: cPhone, id: CId };
+        localStorage.setItem('InvoiceCustomer', JSON.stringify(SelectedCustomer));
+    });
+
+    new DataTable('#customerTable', {
+        order: [[0, 'desc']],
+        scrollCollapse: false,
+        info: false,
+        lengthChange: false
+    });
+}
+
+// -------------------- Product List --------------------
+
+async function ProductList() {
+    let res = await axios.get("/backend/product-with-stock", {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+
+    let productList = $("#productList");
+    let productTable = $("#productTable");
+
+    productTable.DataTable().destroy();
+    productList.empty();
+
+    res.data.data.forEach(item => {
+        let row = `<tr class="text-xs">
+            <td><img class="w-10" src="/storage/${item['img_url']}" /> ${item['name']} (৳ ${item['price']}, ${item['stock_qty']})</td>
+            <td>
+                <a data-name="${item['name']}"
+                   data-buyprice="${item['buy_price']}"
+                   data-price="${item['price']}" 
+                   data-id="${item['id']}" 
+                   class="btn btn-outline-dark text-xxs px-2 py-1 addProduct btn-sm m-0">Add</a>
+            </td>
+        </tr>`;
+        productList.append(row);
+    });
+
+    $('.addProduct').on('click', function () {
+        let PName = $(this).data('name');
+        let PPrice = $(this).data('price');
+        let PId = $(this).data('id');
+        let BuyPrice = $(this).data('buyprice');
+        addModal(PId, PName, PPrice, BuyPrice);
+    });
+
+    new DataTable('#productTable', {
+        order: [[0, 'desc']],
+        scrollCollapse: false,
+        info: false,
+        lengthChange: false
+    });
+}
+
+// -------------------- Confirm / Invoice --------------------
+
+async function createInvoice() {
+    if (!SelectedCustomer || InvoiceItemList.length === 0) {
+        if (!SelectedCustomer) errorToast("Customer Required!");
+        if (InvoiceItemList.length === 0) errorToast("Product Required!");
+        return;
+    }
+
+    let total = parseFloat(document.getElementById('total').innerText);
+    let discount = parseFloat(document.getElementById('discount').innerText);
+    let vat = parseFloat(document.getElementById('vat').innerText);
+    let payable = parseFloat(document.getElementById('payable').innerText);
+    let TotalProfit = 0.0;
+
+    InvoiceItemList.forEach(item => {
+        let profit = parseFloat(item['item_profit']);
+        if (!isNaN(profit)) TotalProfit += profit;
+    });
+
+    let Data = {
+        total,
+        discount,
+        vat,
+        payable,
+        customer_id: parseInt(SelectedCustomer.id),
+        total_profit: parseFloat(TotalProfit),
+        products: InvoiceItemList
+    };
+
+    showLoader();
+    let res = await axios.post("/backend/create-invoice", Data);
+    hideLoader();
+
+    if (res.status === 200) {
+        // Clear localStorage
+        localStorage.removeItem('InvoiceItemList');
+        localStorage.removeItem('InvoiceCustomer');
+        window.location.href = '/invoicePage';
+        successToast("Invoice Created");
+    } else {
+        errorToast("Something Went Wrong");
+    }
+}
+
 
             </script>
 
