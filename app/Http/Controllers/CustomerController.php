@@ -76,7 +76,7 @@ class CustomerController extends Controller
             $user_id = $user->id;
 
             $customer = Customer::where('user_id', $user_id)
-                ->select(['id', 'name', 'email', 'mobile'])
+                ->select(['id', 'name', 'email', 'mobile', 'created_at', 'updated_at'])
                 ->get();
 
 

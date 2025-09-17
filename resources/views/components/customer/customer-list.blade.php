@@ -19,6 +19,8 @@
                             <th>Name</th>
                             <th>Email</th>
                             <th>Mobile</th>
+                            <th>Create Date</th>
+                            <th>Update Date</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -49,12 +51,15 @@
                     Authorization: `Bearer ${token}`
                 }
             });
+
             hideLoader();
-            let customers = res.data.data || res.data;
+            let customers = Array.isArray(res.data?.data) ? res.data.data : [];
             let tableList = $("#tableList");
             let tableData = $("#tableData");
 
+            if ($.fn.DataTable.isDataTable('#tableData')) {
             tableData.DataTable().destroy();
+        }
             tableList.empty();
 
             customers.forEach(function (item, index) {
@@ -63,6 +68,8 @@
                 <td>${item.name}</td>
                 <td>${item.email}</td>
                 <td>${item.mobile}</td>
+                <td>${formatDate(item.created_at)}</td>
+                <td>${formatDate(item.updated_at)}</td>
                 <td>
                     <div class="d-flex justify-content-end gap-2">
                          <div class="btn-group" role="group">
@@ -101,6 +108,14 @@
             }
         }
 
+    }
+
+    function formatDate(dateString) {
+        let date = new Date(dateString);
+        return date.toLocaleString('en-GB', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: true
+        });
     }
 
 
