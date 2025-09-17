@@ -22,6 +22,7 @@
                                 <th>Unit</th>
                                 <th>Stock</th>
                                 <th>Create Date</th>
+                                <th>Update Date</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -77,6 +78,7 @@
                     <td>${item['unit']}</td>
                     <td>${item['stock_qty']}</td>
                     <td>${formatDate(item['created_at'])}</td>
+                    <td>${formatDate(item['updated_at'])}</td>
                     <td>
                         <div class="d-flex justify-content-end gap-2">
                             <div class="btn-group" role="group">
